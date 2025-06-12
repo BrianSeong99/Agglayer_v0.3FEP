@@ -307,7 +307,7 @@ impl AggchainData {
     }
 }
 ```
-
+<!-- 
 ## v0.2 vs v0.3 Comparison
 
 ### Major Changes
@@ -490,4 +490,4 @@ impl AggchainData {
 - [Agglayer Documentation](https://docs.polygon.technology/Agglayer)
 - [GitHub Repository](https://github.com/0xPolygon/Agglayer)
 - [Technical Specifications](https://github.com/0xPolygon/Agglayer-specs)
-- [Integration Guide](https://docs.polygon.technology/Agglayer/integration)
+- [Integration Guide](https://docs.polygon.technology/Agglayer/integration) -->
