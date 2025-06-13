@@ -3,9 +3,9 @@
 ## Background
 
 ### Problem Statement
-In the early versions of AggLayer, the system only focused on securing cross-chain transactions through a single verification method. While this approach worked for basic cross-chain operations, it didn't verify whether the individual chains themselves were operating correctly. Think of it like having a security guard only checking IDs at the entrance of a building, but not verifying if the building's internal systems are functioning properly.
+In the early versions of Agglayer, the system only focused on securing cross-chain transactions through a single verification method. While this approach worked for basic cross-chain operations, it didn't verify whether the individual chains themselves were operating correctly. Think of it like having a security guard only checking IDs at the entrance of a building, but not verifying if the building's internal systems are functioning properly.
 
-The v0.3 release introduces a more comprehensive security approach, similar to having both a building security system and a security guard. First, it verifies that each chain is operating correctly by checking its internal state transitions (like verifying that all transactions are valid and balances are correct). Then, it verifies the cross-chain operations to ensure assets are being transferred safely between chains. This dual-layer security system allows different types of chains to participate in the network using their preferred verification methods - whether they're using advanced execution proofs or simpler consensus mechanisms. By implementing this two-step verification process, AggLayer v0.3 provides an extra layer of security, making cross-chain transfers significantly more secure while maintaining flexibility for different types of blockchain networks.
+The v0.3 release introduces a more comprehensive security approach, similar to having both a building security system and a security guard. First, it verifies that each chain is operating correctly by checking its internal state transitions (like verifying that all transactions are valid and balances are correct). Then, it verifies the cross-chain operations to ensure assets are being transferred safely between chains. This dual-layer security system allows different types of chains to participate in the network using their preferred verification methods - whether they're using advanced execution proofs or simpler consensus mechanisms. By implementing this two-step verification process, Agglayer v0.3 provides an extra layer of security, making cross-chain transfers significantly more secure while maintaining flexibility for different types of blockchain networks.
 
 ### What is Agglayer?
 Agglayer is a revolutionary protocol that addresses the fundamental challenge of blockchain fragmentation by creating a unified framework for cross-chain interoperability. At its core, it serves as an aggregation layer that sits between blockchain ecosystems, offering three key phases of operation: Pre-Confirmation (verifying dependencies), Confirmation (validating proofs), and Finalization (aggregating proofs into a single proof posted to Ethereum). The protocol enables unified liquidity sharing, low-latency interoperability, and asset fungibility across connected chains, without compromising chain sovereignty or decentralization. It achieves this through sophisticated components including the Unified Bridge for cross-chain operations, Pessimistic Proof System for state verification, and various supporting services like AggProver, AggSender, and AggOracle.
@@ -28,30 +28,72 @@ For a more detailed understanding of the Pessimistic Proof architecture, impleme
 
 # Proof of Settlement
 
-Proof of Settlement is a fundamental concept in AggLayer that ensures the security and validity of cross-chain operations. Think of it as a comprehensive verification system that works in two layers:
+Proof of Settlement is a fundamental concept in Agglayer that ensures the security and validity of cross-chain operations. Think of it as a comprehensive verification system that works in two layers:
 
-1. **Internal Settlement Verification**: This layer verifies that each chain's internal state transitions are valid. It's like checking that all transactions within a chain are properly executed and the chain's state is consistent. This is done through either:
-   - Full Execution Proof (FEP): A detailed verification of every operation in the chain
-   - Proof of Consensus: A verification that the chain's consensus mechanism has approved the state change
+1. **Internal Settlement Verification(ZK Proof)**: This layer verifies that each chain's internal state transitions are valid. It's like checking that all transactions within a chain are properly executed and the chain's state is consistent. This is done via ZK Proof: A detailed verification of every operation in the chain, and other verification type can be added in the future.
 
-2. **Cross-Chain Settlement Verification**: This layer verifies that cross-chain operations (like asset transfers between chains) are valid. It ensures that when assets move between chains, the operations are atomic and secure.
+2. **Cross-Chain Settlement Verification(Aggchain Proof & Pessimistic Proof)**: This layer verifies that cross-chain operations (like asset transfers between chains) are valid. It ensures that when assets move between chains, the operations are atomic and secure.
 
-The combination of these two layers provides a robust security model similar to two-factor authentication - both the internal chain operations and the cross-chain transfers must be verified for a transaction to be considered valid. This dual-layer approach ensures that AggLayer can maintain security while supporting different types of chains with varying consensus mechanisms.
+The combination of these two layers provides a robust security model - both the internal chain operations and the cross-chain transfers must be verified for a transaction to be considered valid. This dual-layer approach ensures that Agglayer can maintain security while supporting different types of chains with varying consensus mechanisms.
+
+![v0.3 flow](./pics/v03Flow.png)
+*Highlevel overview of the v0.3 trust flow, more details in later sections*
 
 ## Aggchain Proof
 
-Aggchain Proof is a flexible verification system in AggLayer that supports different types of consensus mechanisms for proving chain state transitions. Think of it as a universal adapter that can work with various types of chains, whether they use simple signature-based verification or more complex proof systems.
+Aggchain Proof is a flexible verification system in Agglayer that supports different types of consensus mechanisms for proving chain state transitions. Think of it as a universal adapter that can work with various types of chains, whether they use simple signature-based verification or more complex proof systems.
 
 The system supports two main types of proofs:
 
-1. **ECDSA Proof**: A simpler verification method where a trusted sequencer signs off on state changes. This is like having a security guard verify and approve changes to a building's access system.
+1. **ECDSA Signature**: A simpler verification method where a trusted sequencer signs off on state changes. This is like having a security guard verify and approve changes to a building's access system.
 
 2. **Generic Proof**: A more flexible system that can work with any type of chain-specific proof system. This is like having a universal translator that can understand and verify different types of security protocols.
 
-The key innovation of Aggchain Proof is its ability to combine these different proof types with bridge verification, ensuring that both the chain's internal operations and cross-chain transfers are secure. This flexibility allows AggLayer to support a wide range of chains while maintaining strong security guarantees.
+The key innovation of Aggchain Proof is its ability to combine these different proof types with bridge verification, ensuring that both the chain's internal operations and cross-chain transfers are secure. This flexibility allows Agglayer to support a wide range of chains while maintaining strong security guarantees.
 
 ### Aggchain Proof Data Structure
 ```rust
+
+/* -------- AggProver input data -------- */
+// Witness Data structure
+pub struct AggchainProofWitness {
+    /// Previous local exit root.
+    pub prev_local_exit_root: Digest,
+    /// New local exit root.
+    pub new_local_exit_root: Digest,
+    /// L1 info root used to import bridge exits.
+    pub l1_info_root: Digest,
+    /// Origin network for which the proof was generated.
+    pub origin_network: u32,
+    /// Full execution proof with its metadata.
+    pub fep: FepInputs,
+    /// Commitment on the imported bridge exits minus the unset ones.
+    pub commit_imported_bridge_exits: Digest,
+    /// Bridge witness related data.
+    pub bridge_witness: BridgeWitness,
+}
+
+pub struct BridgeWitness {
+    /// List of inserted GER minus the removed ones.
+    pub inserted_gers: Vec<InsertedGER>,
+    /// Raw list of inserted GERs which includes also the ones which get
+    /// removed.
+    pub raw_inserted_gers: Vec<Digest>,
+    /// List of removed GER.
+    pub removed_gers: Vec<Digest>,
+    /// List of the each imported bridge exit containing the global index and
+    /// the leaf hash.
+    pub bridge_exits_claimed: Vec<GlobalIndexWithLeafHash>,
+    /// List of the global index of each unset bridge exit.
+    pub global_indices_unset: Vec<U256>,
+    /// State sketch for the prev L2 block.
+    pub prev_l2_block_sketch: EvmSketchInput,
+    /// State sketch for the new L2 block.
+    pub new_l2_block_sketch: EvmSketchInput,
+}
+
+/* -------- Agglayer Pessimistic Proof input data -------- */
+// AggchainData for Pessimistic Proof in Agglayer
 pub enum AggchainData {
     /// ECDSA signature.
     ECDSA {
@@ -70,95 +112,101 @@ pub enum AggchainData {
 }
 ```
 
-## ECDSA
+### Execution
+1. Aggchain Proof will first verify local chain's ECDSA signature or zk proof, which will explained in the next section
+2. Then it will verify the bridge constraints
+
+```rust
+// this computation is ran inside SP1 zkVM
+pub fn verify_aggchain_inputs(&self) -> Result<AggchainProofPublicValues, ProofError> {
+    // Verify the FEP proof or ECDSA signature
+    self.fep.verify(
+        self.l1_info_root,
+        self.new_local_exit_root,
+        self.commit_imported_bridge_exits,
+    )?;
+
+    // Verify the bridge constraints
+    self.bridge_constraints_input().verify()?;
+
+    Ok(self.public_values())
+}
+
+/// Code for Verifing the bridge state.
+pub fn verify(&self) -> Result<(), BridgeConstraintsError> {
+    // Verify the previous and new hash chains and their reconstructions.
+    self.verify_ger_hash_chains()?;
+    let bridge_address = self.fetch_bridge_address()?;
+    // Verify the previous and new hash chains and their reconstructions.
+    self.verify_claims_hash_chains(bridge_address)?;
+    // Verify the new local exit root.
+    self.verify_new_ler(bridge_address)?;
+    // Verify that the claimed global indexes minus the unset global indexes are equal to the Constrained global indexes.
+    self.verify_constrained_global_indices()?;
+    // Verify the inclusion proofs of the inserted GERs up to the L1InfoRoot.
+    self.verify_inserted_gers()
+}
+```
+
+## ECDSA Verification
 
 ### Description
 
-The ECDSA (Elliptic Curve Digital Signature Algorithm) implementation is the original consensus mechanism used in AggLayer. In this system, a trusted sequencer (a designated address) acts as a security guard, signing off on state changes to ensure they are valid. When a chain wants to update its state or perform cross-chain operations, the trusted sequencer must verify and sign these changes using their private key. This signature serves as proof that the changes are legitimate and authorized. The system uses this signature to verify state transitions across three important data structures: the local exit tree (tracking cross-chain exits), the local balance tree (tracking token balances), and the nullifier tree (preventing double-spending).
+The ECDSA (Elliptic Curve Digital Signature Algorithm) implementation is the original consensus mechanism used in Agglayer. In this system, a trusted sequencer (a designated address) acts as a security guard, signing off on state changes to ensure they are valid. When a chain wants to update its state or perform cross-chain operations, the trusted sequencer must verify and sign these changes using their private key. This signature serves as proof that the changes are legitimate and authorized. The system uses this signature to verify state transitions across three important data structures: the local exit tree (tracking cross-chain exits), the local balance tree (tracking token balances), and the nullifier tree (preventing double-spending).
 
-### Aggchain Parameters
-
-The system uses a single Ethereum address (20 bytes) as the trusted sequencer:
-
-```solidity
-/**
-* aggchain_params:
-* Field:           | trusted_sequencer |
-* length (bits):   | 160               |
-*/
-uint256 aggchain_params = keccak256(abi.encodePacked(trusted_sequencer))
-```
-
-Where:
-- `trusted_sequencer`: The Ethereum address that is authorized to sign state changes. This address signs a message containing the new local exit root and the commitment to imported bridge exits.
-
-### Program Implementation
-
-#### Public Inputs
-- `public_values`: A hash combining the old local exit root, L1 info tree root, rollup ID, new local exit root, commitment to imported bridge exits, and the trusted sequencer's parameters.
-
-#### Execution
+### Execution
 1. Create a message to sign by combining the new local exit root and the commitment to imported bridge exits
 2. Verify the signature using the trusted sequencer's public key
 3. Ensure the signature matches the trusted sequencer's address
 
-```javascript
-// Public inputs
-const old_ler;
-const l1_info_tree_root;
-const rollup_id;
-const new_ler;
-const commit_imported_bridge_exits;
-const trusted_sequencer;
+```rust
+// ECDSA Verification Code
+pub fn verify(
+    &self,
+    l1_info_root: Digest,
+    new_local_exit_root: Digest,
+    commit_imported_bridge_exits: Digest,
+) -> Result<(), ProofError> {
+    // Verify only one ECDSA on the public inputs
+    let sha256_fep_public_values = self.sha256_public_values();
+    let signature_commitment = keccak256_combine([
+        sha256_fep_public_values,
+        new_local_exit_root.0,
+        commit_imported_bridge_exits.0,
+    ]);
 
-// Build message to sign
-const message_to_sign = keccak(new_ler # commit_imported_bridge_exits);
+    let recovered_signer = signature
+        .recover_address_from_prehash(&B256::new(signature_commitment.0))
+        .map_err(|_| ProofError::InvalidSignature)?;
 
-// Verify signature
-const from = ecrecover(message_to_sign, r, s, v);
-assert(from === trusted_sequencer);
+    if recovered_signer != self.trusted_sequencer {
+        eprintln!(
+            "fep public values: {:?}",
+            AggregationProofPublicValues::from(self)
+        );
+        eprintln!(
+            "signed_commitment: {signature_commitment:?} = keccak(sha256_fep_pv: \
+                {sha256_fep_public_values:?} || new_ler:
+                {new_local_exit_root:?} || commit_imported_bridge_exits: \
+                {commit_imported_bridge_exits:?})"
+        );
+        return Err(ProofError::InvalidSigner {
+            declared: self.trusted_sequencer,
+            recovered: recovered_signer,
+        });
+    }
+
+    Ok(())
+}
 ```
 
-## FEP (Full Execution Proof)
+## ZK Proof Verification
 
 ### Description
 
-The Full Execution Proof (FEP) is a more advanced consensus mechanism that provides comprehensive verification of chain operations. Unlike the simpler ECDSA approach, FEP is a proof system that verifies every aspect of a chain's state transition, in this case `op-geth` operations. This system is particularly useful for chains that need to prove their entire state transition is valid, not just that it was authorized by a trusted party. Then Aggchain Proof will combine FEP state transition proofs with bridge checks to ensure both internal chain operations and cross-chain transfers are valid.
+The ZK Proof(Full execution proof, aka `fep` in the Codebase) is a more advanced consensus mechanism that provides comprehensive verification of chain operations. Unlike the simpler ECDSA approach, ZK Proof is a proof system that verifies every aspect of a chain's state transition, in this case `op-geth` operations and verify bridge constraints. This system is particularly useful for chains that need to prove their entire state transition is valid, not just that it was authorized by a trusted party. Then Aggchain Proof will combine ZK Proof state transition proofs with bridge checks to ensure both internal chain operations and cross-chain transfers are valid.
 
-### Aggchain Parameters
-
-The system uses several parameters to verify the chain's state:
-
-```solidity
-/**
-  * aggchain_params:
-  * Field:           | l2PreRoot         | claimRoot          | claimBlockNum      | rollupConfigHash     | optimisticMode  | trustedSequencer |
-  * length (bits):   | 256               | 256                | 256                | 256                  | 8               | 160              |
-  */
-uint256 aggchain_params = keccak256(abi.encodePacked(
-    l2PreRoot,
-    claimRoot,
-    claimBlockNum,
-    rollupConfigHash,
-    optimisticMode,
-    trustedSequencer
-))
-```
-
-These parameters include:
-- `l2PreRoot`: The previous state of the chain
-- `claimRoot`: The new state being claimed
-- `claimBlockNum`: The block number being verified
-- `rollupConfigHash`: Configuration settings for the chain
-- `optimisticMode`: Whether to use optimistic verification
-- `trustedSequencer`: The address authorized to make changes
-
-### Program Implementation
-
-#### Public Inputs
-- `public_values`: A hash combining various state elements including the old and new local exit roots, L1 info tree root, rollup ID, and bridge exit commitments.
-
-#### Execution
+### Execution
 
 The verification process happens in two main steps:
 
@@ -172,75 +220,46 @@ The verification process happens in two main steps:
    - Check that global exit roots exist on the main chain
    - Validate that all claims in the state transition are legitimate
 
-```javascript
-// Constants
-const rangeVkeyCommitment;
-const aggregationVkey;
-const bridge_address;
-const ger_manager_address;
+```rust
+// ZK Proof Verification Code
+pub fn verify( 
+    &self,
+    l1_info_root: Digest,
+    new_local_exit_root: Digest,
+    commit_imported_bridge_exits: Digest,
+) -> Result<(), ProofError> {
+    // Verify l1 head
+    self.verify_l1_head(l1_info_root)?;
 
-// Public inputs
-const old_ler;
-const l1_info_tree_root;
-const rollup_id;
-const new_ler;
-const commit_imported_bridge_exits;
-const l2_pre_root;
-const claim_root;
-const claim_block_num;
-const rollup_config_hash;
+    // Verify the FEP stark proof.
+    {
+        sp1_zkvm::lib::verify::verify_sp1_proof(
+            &self.aggregation_vkey_hash.to_hash_u32(),
+            &self.sha256_public_values().into(),
+        );
 
-// Verify state transition
-const publics_op_fep = sha256({
-    l1_blockHash,
-    l2_pre_root,
-    claim_root,
-    claim_block_num,
-    rollup_config_hash,
-    range_vkey_commitment
-});
-
-// Handle different verification modes
-if (optimisticMode === 0) {
-    // Full verification mode
-    proveL1BlockHashExist(l1_info_tree_root, l1_blockHash);
-    sp1.verify(aggregation_vkey, publics_op_fep);
-} else {
-    // Optimistic mode - faster but requires trusted sequencer
-    const message_to_sign = keccak(publics_op_fep # new_ler # commit_imported_bridge_exits);
-    const from = ecrecover(message_to_sign, r, s, v);
-    assert(from === trusted_sequencer);
+        return Ok(());
+    }
 }
-
-// Verify bridge constraints
-// ... (bridge constraint verification logic)
 ```
 
 ## Components
 
+### Local Chain
+Chains that are connected to Agglayer.
+
 ### AggProver
-The AggProver is responsible for generating proofs that are then aggregated. It handles:
-- State transition verification
-- Proof generation
-- Bridge constraint verification
+The AggProver is a critical component of the Agglayer system that generates cryptographic proofs for state transitions between different chains. It works by collecting and processing chain data (including local exit roots, bridge exits, and state transitions), creating a witness that contains all necessary information for proof generation, and then using this witness to generate a verifiable proof that can be used to validate cross-chain operations. The prover supports multiple verification methods, including both ECDSA signatures (`CONSENSUS_TYPE = 0`) and more flexible generic proofs (`CONSENSUS_TYPE = 1`), and ensures the integrity of state transitions by verifying bridge constraints, global exit roots, and state consistency across the network. The generated proofs are essential for maintaining security and trust in the cross-chain operations within the Agglayer ecosystem.
 
 ### AggSender
-The AggSender manages the communication of proofs to the Agglayer for verification. It ensures:
-- Proper proof transmission
-- Network communication
-- State synchronization
+AggSender is a critical component in the Agglayer bridge infrastructure that builds and packages information required to prove a target chain's bridge state into certificates. These certificates provide the necessary inputs to build pessimistic proofs, which are essential for secure cross-chain communication and asset transfers. AggSender the local chain [Certificates](https://github.com/BrianSeong99/Agglayer_PessimisticProof_Benchmark?tab=readme-ov-file#certificate), and periodically sends them to the Agglayer for pessimistic proof generation. 
+
+Here's more info on [AggSender](https://github.com/BrianSeong99/Agglayer_Aggkit?tab=readme-ov-file#aggsender-certificate-building-component-for-pessimistic-proofs)
 
 ### AggOracle
-The AggOracle provides necessary on-chain data for proof verification. It supplies:
-- L1 block data
-- Bridge state information
-- Network state updates
+The AggOracle provides necessary on-chain data for proof verification. It is responsible for ensuring that the Global Exit Root (GER) is properly propagated from Layer 1 (L1) to Layer 2 (L2) sovereign chain smart contracts. This propagation is critical for enabling secure asset and message bridging between blockchain networks.
 
-### Other Key Components
-- **Trusted Sequencer Address**: Manages consensus verification
-- **SP1 Verifier**: Handles proof verification
-- **PLONK Verifier**: Manages generic proof verification
-- **zkEVM State**: Maintains the state of the system
+Here's more info on [AggOracle](https://github.com/BrianSeong99/Agglayer_Aggkit?tab=readme-ov-file#aggoracle-global-exit-root-propagation-system)
 
 ## How It Works
 
@@ -279,34 +298,8 @@ The system handles various error scenarios:
 - Balance overflows/underflows
 - Invalid bridge exits
 
-## Implementation Details
+![Sequence Diagram of v0.3]()
 
-### Aggchain Hash Computation
-```rust
-impl AggchainData {
-    pub fn aggchain_hash(&self) -> Digest {
-        match &self {
-            AggchainData::ECDSA { signer, .. } => keccak256_combine([
-                &(ConsensusType::ECDSA as u32).to_be_bytes(),
-                signer.as_slice(),
-            ]),
-            AggchainData::Generic {
-                aggchain_params,
-                aggchain_vkey,
-            } => {
-                let mut aggchain_vkey_hash = [0u8; 32];
-                BigEndian::write_u32_into(aggchain_vkey, &mut aggchain_vkey_hash);
-
-                keccak256_combine([
-                    &(ConsensusType::Generic as u32).to_be_bytes(),
-                    aggchain_vkey_hash.as_slice(),
-                    aggchain_params.as_slice(),
-                ])
-            }
-        }
-    }
-}
-```
 <!-- 
 ## v0.2 vs v0.3 Comparison
 
@@ -323,7 +316,7 @@ impl AggchainData {
      - Single verification path
    - **v0.3**:
      - Flexible proof structure through generic aggchains
-     - Multiple verification paths (ECDSA, FEP)
+     - Multiple verification paths (ECDSA, ZK Proof)
      - Enhanced proof generation pipeline
 
 3. **State Management**
