@@ -62,7 +62,8 @@ Proof of Settlement is a fundamental concept in Agglayer that ensures the securi
 
 The combination of these two layers provides a robust security model - both the internal chain operations and the cross-chain transfers must be verified for a transaction to be considered valid. This dual-layer approach ensures that Agglayer can maintain security while supporting different types of chains with varying consensus mechanisms.
 
-![v0.3 flow](./pics/v03Flow.png){width=50%}
+<img src="./pics/v03Flow.png" alt="v0.3 flow" width="70%" style="display: block; margin: 0 auto;">
+
 *Highlevel overview of the v0.3 trust flow, more details in later sections*
 
 ## Aggchain Proof
