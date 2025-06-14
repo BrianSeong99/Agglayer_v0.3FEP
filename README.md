@@ -30,7 +30,7 @@ For a more detailed understanding of the Pessimistic Proof architecture, impleme
 
 Proof of Settlement is a fundamental concept in Agglayer that ensures the security and validity of cross-chain operations. Think of it as a comprehensive verification system that works in two layers:
 
-1. **Internal Settlement Verification(ZK Proof)**: This layer verifies that each chain's internal state transitions are valid. It's like checking that all transactions within a chain are properly executed and the chain's state is consistent. This is done via ZK Proof: A detailed verification of every operation in the chain, and other verification type can be added in the future.
+1. **Internal Settlement Verification(Validity Proof)**: This layer verifies that each chain's internal state transitions are valid. It's like checking that all transactions within a chain are properly executed and the chain's state is consistent. This is done via Validity Proof: A detailed verification of every operation in the chain, and other verification type can be added in the future.
 
 2. **Cross-Chain Settlement Verification(Aggchain Proof & Pessimistic Proof)**: This layer verifies that cross-chain operations (like asset transfers between chains) are valid. It ensures that when assets move between chains, the operations are atomic and secure.
 
@@ -92,6 +92,27 @@ pub struct BridgeWitness {
     pub new_l2_block_sketch: EvmSketchInput,
 }
 
+// Returning values of AggProver
+pub struct AggchainProofPublicValues {
+    /// Previous local exit root.
+    pub prev_local_exit_root: Digest,
+
+    /// New local exit root.
+    pub new_local_exit_root: Digest,
+
+    /// L1 info root used to import bridge exits.
+    pub l1_info_root: Digest,
+
+    /// Origin network for which the proof was generated.
+    pub origin_network: NetworkId,
+
+    /// Commitment to the imported bridge exits indexes.
+    pub commit_imported_bridge_exits: Digest,
+
+    /// Chain-specific commitment forwarded by the PP.
+    pub aggchain_params: Digest,
+}
+
 /* -------- Agglayer Pessimistic Proof input data -------- */
 // AggchainData for Pessimistic Proof in Agglayer
 pub enum AggchainData {
@@ -113,7 +134,7 @@ pub enum AggchainData {
 ```
 
 ### Execution
-1. Aggchain Proof will first verify local chain's ECDSA signature or zk proof, which will explained in the next section
+1. Aggchain Proof will first verify local chain's ECDSA signature or Validity Proof, which will explained in the next section
 2. Then it will verify the bridge constraints
 
 ```rust
@@ -200,11 +221,11 @@ pub fn verify(
 }
 ```
 
-## ZK Proof Verification
+## Validity Proof Verification
 
 ### Description
 
-The ZK Proof(Full execution proof, aka `fep` in the Codebase) is a more advanced consensus mechanism that provides comprehensive verification of chain operations. Unlike the simpler ECDSA approach, ZK Proof is a proof system that verifies every aspect of a chain's state transition, in this case `op-geth` operations and verify bridge constraints. This system is particularly useful for chains that need to prove their entire state transition is valid, not just that it was authorized by a trusted party. Then Aggchain Proof will combine ZK Proof state transition proofs with bridge checks to ensure both internal chain operations and cross-chain transfers are valid.
+The Validity Proof(Full execution proof, aka `fep` in the Codebase) is a more advanced consensus mechanism that provides comprehensive verification of chain operations. Unlike the simpler ECDSA approach, Validity Proof is a proof system that verifies every aspect of a chain's state transition, in this case `op-geth` operations and verify bridge constraints. This system is particularly useful for chains that need to prove their entire state transition is valid, not just that it was authorized by a trusted party. Then Aggchain Proof will combine Validity Proof state transition proofs with bridge checks to ensure both internal chain operations and cross-chain transfers are valid.
 
 ### Execution
 
@@ -221,7 +242,7 @@ The verification process happens in two main steps:
    - Validate that all claims in the state transition are legitimate
 
 ```rust
-// ZK Proof Verification Code
+// Validity Proof Verification Code
 pub fn verify( 
     &self,
     l1_info_root: Digest,
@@ -263,42 +284,67 @@ Here's more info on [AggOracle](https://github.com/BrianSeong99/Agglayer_Aggkit?
 
 ## How It Works
 
-### Step 1: Initial State Verification
-1. Verify previous local exit root
-2. Check pessimistic root validity
-3. Validate L1 info root
-4. Confirm origin network
+```mermaid
+sequenceDiagram
+    participant Local as Local Chain
+    participant AggProver as AggProver
+    participant Agglayer as Agglayer
 
-### Step 2: Proof Generation and Verification
-1. Generate aggchain proof
-   - For ECDSA: Create and verify signature
-   - For Generic: Generate SP1 proof
-2. Verify proof validity
-3. Check version consistency
-4. Validate state transitions
+    %% Step 1
+    Note over Local: Step 1: State Transition Validation
+    Local->>Local: Confirm on State Transition
+    Local->>Local: Generate Validity Proof or ECDSA Signature of the state transition
 
-### Step 3: Bridge Constraint Verification
-1. Verify imported bridge exits
-2. Check global exit roots
-3. Validate bridge operations
-4. Confirm state consistency
+    %% Step 2
+    Note over AggProver: Step 2: AggProver Aggchain Proof
+    Local->>AggProver: Submit Validity Proof / Signature
 
-### Step 4: State Update
-1. Update local exit root
-2. Modify pessimistic root
-3. Update bridge state
-4. Commit changes
+    AggProver->>AggProver: Verify Validity Proof or ECDSA Signature
 
-### Error Handling
-The system handles various error scenarios:
-- Invalid signatures
-- Inconsistent payload versions
-- Invalid signers
-- Height overflow
-- Balance overflows/underflows
-- Invalid bridge exits
+    AggProver->>AggProver: Verify GER Insert/Remove Stack
+    AggProver->>AggProver: Verify Claimed & Unset Hashchains
+    AggProver->>AggProver: Verify Local Exit Root
+    AggProver->>AggProver: Verify commit_imported_bridge_exits
+    AggProver->>AggProver: Verify GER Inclusion in L1 Info Root
 
-![Sequence Diagram of v0.3]()
+    %% Step 3
+    Note over Agglayer: Step 3: Agglayer Pessimistic Proof
+    AggProver->>Agglayer: Submit AggchainProof and PublicValues
+
+    Agglayer->>Agglayer: Recompute AggchainProofPublicValues
+    Agglayer->>Agglayer: Verify Aggchain Proof (SP1, vkey)
+
+    Agglayer->>Agglayer: Recompute LET, LBT, NT Changes
+    Agglayer->>Agglayer: Verify Pessimistic Proof and Accepts Local Chain State Transition Certificate
+    Agglayer->>Agglayer: Furtuer faciliate bridging
+```
+
+### Step 1 zkVM: Initial State Transition Validation
+This process happens inside a zkVM, which now runs in SP1 zkVM in `CDK-OP-GETH`, but this is meant to be modular and can support any type of prover.
+
+1. **Generate validity proof / ecdsa signature**: Depending on the chain's security setting with Agglayer, it will generate validity proof that proves the correct internal state transition, or a signature made with the trusted sequencer's private key.
+
+### Step 2: AggProver Aggchain Proof
+This whole section is ran in SP1 zkVM, where it validates the trust from previous step, and additionally validates bridge events data validations, and generate a proof of this entire process.
+
+1. **Verify validity proof / ecdsa signature**: 
+    - For validity proof, its just verifying an SP1 proof, which can be configured into other validity proof to verify. 
+    - For ecdsa signature, is to recover the public key of trusted sequencer from the signature and compare.
+2. **Verify bridge constraints**: 
+    - First is to verify the GER insert sequence and remove sequence which are both recorded in hashchains, two of them together acts as a Stack, recording GER update sequence based on LIFO rule. Removal happens when there's fault GER being inserted, which doesn't happen often.
+    - Second is to verify claimed and unset claims hashchain. Ones that are claimed will be added to the claimed hashchain, the ones that's considered invalid will be added to unset hashchain.
+    - Third is to verify Local Exit Root is indeed the correct one.
+    - Forth is to verify `commit_imported_bridge_exits` created submitted to AggProver is indeed constructed based on the correct claimed bridge events and unset bridge events.
+    - Finally is to verify each inserted GER is properly included in the L1 Info Root through a Merkle proof. Checking Each GER has a valid Merkle proof, The proof leads to the correct L1 Info Root, and The leaf index in the L1 Info Tree is correct.
+3. **Return `AggchainProofPublicValues`**: Execution output of the verification.
+
+### Step 3: Agglayer Pessimistic Proof
+This process is ran in SP1 zkVM, to verify Aggchain Proof and then finally verify Local Chain total Asset balance change based on validated bridge events inputs from Aggchain Proof.
+
+1. **Verify Aggchain Proof**:
+    - Verify Aggchain Proof via recreating `AggchainProofPublicValues` but this time based on information fetched by Agglayer, and verify the Aggchain proof with the recreated value as input and its matching vkey.
+2. **Verify Local Exit Tree, Local Balance Tree, and Nullifier Tree**:
+    - Recompute the state changes happened to LET, LBT, and NT. Compare it against the certificate submitted from the Local Chain's LET.
 
 <!-- 
 ## v0.2 vs v0.3 Comparison
@@ -316,7 +362,7 @@ The system handles various error scenarios:
      - Single verification path
    - **v0.3**:
      - Flexible proof structure through generic aggchains
-     - Multiple verification paths (ECDSA, ZK Proof)
+     - Multiple verification paths (ECDSA, Validity Proof)
      - Enhanced proof generation pipeline
 
 3. **State Management**
