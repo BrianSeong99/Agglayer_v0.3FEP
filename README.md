@@ -25,6 +25,7 @@
   - [Step 1 zkVM: Initial State Transition Validation](#step-1-zkvm-initial-state-transition-validation)
   - [Step 2: AggProver Aggchain Proof](#step-2-aggprover-aggchain-proof)
   - [Step 3: Agglayer Pessimistic Proof](#step-3-agglayer-pessimistic-proof)
+- [Changes from v0.2 to v0.3](#changes-from-v0.2-to-v0.3)
 
 ## Background
 
@@ -294,7 +295,7 @@ pub fn verify(
 ## Components
 
 ### Local Chain
-Chains that are connected to Agglayer.
+Chains that are connected to Agglayer, which includes chains like Katana, X Layer, and more.
 
 ### AggProver
 The AggProver is a critical component of the Agglayer system that generates cryptographic proofs for state transitions between different chains. It works by collecting and processing chain data (including local exit roots, bridge exits, and state transitions), creating a witness that contains all necessary information for proof generation, and then using this witness to generate a verifiable proof that can be used to validate cross-chain operations. The prover supports multiple verification methods, including both ECDSA signatures (`CONSENSUS_TYPE = 0`) and more flexible generic proofs (`CONSENSUS_TYPE = 1`), and ensures the integrity of state transitions by verifying bridge constraints, global exit roots, and state consistency across the network. The generated proofs are essential for maintaining security and trust in the cross-chain operations within the Agglayer ecosystem.
@@ -373,187 +374,38 @@ This process is ran in SP1 zkVM, to verify Aggchain Proof and then finally verif
 2. **Verify Local Exit Tree, Local Balance Tree, and Nullifier Tree**:
     - Recompute the state changes happened to LET, LBT, and NT. Compare it against the certificate submitted from the Local Chain's LET.
 
-<!-- 
-## v0.2 vs v0.3 Comparison
+# Changes from v0.2 to v0.3
+
+The transition from v0.2 to v0.3 represents a significant evolution in Agglayer's architecture, focusing on enhanced security, flexibility, and interoperability. This version introduces a more comprehensive approach to cross-chain verification while maintaining backward compatibility with existing implementations.
+
+![v0.2 vs v0.3](./pics/v02v03.png)
+*Architectural comparison between v0.2 and v0.3, highlighting the evolution of the verification system*
 
 ### Major Changes
 
 1. **Consensus Type Evolution**
-   - **v0.2**: Single consensus type (`CONSENSUS_TYPE = 0`) using ECDSA signatures
-   - **v0.3**: Introduces generic consensus mechanism (`CONSENSUS_TYPE = 1`) while maintaining backward compatibility
+   - **v0.2**: Used a single consensus type (`CONSENSUS_TYPE = 0`) relying solely on ECDSA signatures for verification. This approach, while simple, limited the types of chains that could participate in the network.
+   - **v0.3**: Introduces a flexible consensus mechanism (`CONSENSUS_TYPE = 1`) that supports both traditional ECDSA signatures and more advanced proof systems. This allows different types of chains to participate using their preferred verification method.
 
 2. **Proof Generation**
    - **v0.2**: 
-     - Fixed proof structure
-     - Limited to ECDSA-based verification
-     - Single verification path
+     - Used a fixed proof structure that only supported ECDSA-based verification
+     - Limited to a single verification path
+     - Required all chains to conform to the same verification standard
    - **v0.3**:
-     - Flexible proof structure through generic aggchains
-     - Multiple verification paths (ECDSA, Validity Proof)
-     - Enhanced proof generation pipeline
+     - Introduces a flexible proof structure through generic aggchains
+     - Supports multiple verification paths (ECDSA and Validity Proof)
+     - Allows chains to choose their verification method based on their needs
+     - Enhances the proof generation pipeline for better efficiency
 
 3. **State Management**
    - **v0.2**:
-     - Simple state transitions
-     - Basic bridge constraints
-     - Limited state verification
+     - Implemented basic state transitions
+     - Used simple bridge constraints
+     - Limited state verification capabilities
    - **v0.3**:
-     - Enhanced state transition handling
-     - Comprehensive bridge constraints
-     - Advanced state verification mechanisms
-
-### Technical Improvements
-
-1. **Architecture Changes**
-   ```solidity
-   // v0.2: Fixed consensus structure
-   struct ConsensusData {
-       bytes32 consensus_hash;
-       bytes signature;
-   }
-
-   // v0.3: Generic consensus structure
-   struct GenericConsensusData {
-       uint32 consensus_type;
-       bytes32 aggchain_vkey;
-       bytes32 aggchain_params;
-       bytes proof;
-   }
-   ```
-
-2. **Verification Process**
-   - **v0.2**:
-     ```solidity
-     function verifyConsensus(bytes32 messageHash, bytes memory signature) {
-         address signer = ecdsa.recover(messageHash, signature);
-         require(signer == trustedSequencer, "Invalid signature");
-     }
-     ```
-   - **v0.3**:
-     ```solidity
-     function verifyGenericConsensus(
-         uint32 consensusType,
-         bytes32 aggchainVkey,
-         bytes32 aggchainParams,
-         bytes memory proof
-     ) {
-         if (consensusType == 0) {
-             // Legacy ECDSA verification
-             verifyLegacyConsensus(proof);
-         } else {
-             // Generic consensus verification
-             verifyGenericProof(aggchainVkey, aggchainParams, proof);
-         }
-     }
-     ```
-
-3. **Bridge Integration**
-   - **v0.2**:
-     - Basic bridge exit verification
-     - Simple global exit root management
-     - Limited cross-chain message support
-   - **v0.3**:
-     - Enhanced bridge exit verification
-     - Advanced global exit root management
-     - Comprehensive cross-chain message support
-     - Improved bridge constraint validation
-
-### Performance Enhancements
-
-1. **Proof Generation**
-   - **v0.2**: Single-threaded proof generation
-   - **v0.3**: 
-     - Parallel proof generation
-     - Optimized proof structure
-     - Enhanced verification efficiency
-
-2. **State Updates**
-   - **v0.2**: Sequential state updates
-   - **v0.3**:
-     - Batched state updates
-     - Optimized storage access
-     - Improved atomicity guarantees
-
-3. **Bridge Operations**
-   - **v0.2**: Basic bridge operation handling
-   - **v0.3**:
-     - Efficient GER management
-     - Optimized index tracking
-     - Enhanced constraint verification
-
-### Security Improvements
-
-1. **Verification Mechanisms**
-   - **v0.2**:
-     - Basic ECDSA signature verification
-     - Simple state transition checks
-   - **v0.3**:
-     - Multiple verification paths
-     - Enhanced state transition validation
-     - Comprehensive security checks
-
-2. **Error Handling**
-   - **v0.2**: Basic error handling
-   - **v0.3**:
-     - Detailed error types
-     - Enhanced error reporting
-     - Improved error recovery
-
-### Migration Path
-
-1. **From v0.2 to v0.3**
-   ```solidity
-   // v0.2 consensus data
-   struct V2Consensus {
-       bytes32 consensus_hash;
-       bytes signature;
-   }
-
-   // v0.3 generic consensus data
-   struct V3Consensus {
-       uint32 consensus_type;
-       bytes32 aggchain_vkey;
-       bytes32 aggchain_params;
-       bytes proof;
-   }
-
-   // Migration helper
-   function migrateConsensus(V2Consensus memory v2Data) 
-       internal 
-       pure 
-       returns (V3Consensus memory) 
-   {
-       return V3Consensus({
-           consensus_type: 0, // Legacy type
-           aggchain_vkey: bytes32(0),
-           aggchain_params: keccak256(abi.encodePacked(v2Data.consensus_hash)),
-           proof: v2Data.signature
-       });
-   }
-   ```
-
-2. **Backward Compatibility**
-   - v0.3 maintains support for v0.2 consensus type
-   - Gradual migration path for existing implementations
-   - Deprecation timeline for legacy consensus type
-
-### Future Considerations
-
-1. **Planned Deprecations**
-   - `CONSENSUS_TYPE = 0` will be deprecated
-   - Legacy verification paths will be removed
-   - Migration to generic consensus required
-
-2. **Upcoming Features**
-   - Enhanced generic consensus support
-   - Additional verification mechanisms
-   - Improved performance optimizations
-
-[Diagram 7: v0.2 vs v0.3 architecture comparison]
-
-
-## References
-- [Agglayer Documentation](https://docs.polygon.technology/Agglayer)
-- [GitHub Repository](https://github.com/0xPolygon/Agglayer)
-- [Technical Specifications](https://github.com/0xPolygon/Agglayer-specs)
-- [Integration Guide](https://docs.polygon.technology/Agglayer/integration) -->
+     - Introduces enhanced state transition handling
+     - Implements comprehensive bridge constraints
+     - Adds advanced state verification mechanisms
+     - Improves bridge constraint validation
+     - Enhances global exit root management
