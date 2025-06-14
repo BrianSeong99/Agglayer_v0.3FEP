@@ -1,5 +1,31 @@
 # Agglayer v0.3.0 Documentation
 
+## Table of Contents
+- [Background](#background)
+  - [Problem Statement](#problem-statement)
+  - [What is Agglayer?](#what-is-agglayer)
+  - [What is a Unified Bridge?](#what-is-a-unified-bridge)
+  - [What is a Pessimistic Proof?](#what-is-a-pessimistic-proof)
+- [Proof of Settlement](#proof-of-settlement)
+  - [Aggchain Proof](#aggchain-proof)
+    - [Aggchain Proof Data Structure](#aggchain-proof-data-structure)
+    - [Execution](#execution)
+  - [ECDSA Verification](#ecdsa-verification)
+    - [Description](#description-1)
+    - [Execution](#execution-1)
+  - [Validity Proof Verification](#validity-proof-verification)
+    - [Description](#description-2)
+    - [Execution](#execution-2)
+- [Components](#components)
+  - [Local Chain](#local-chain)
+  - [AggProver](#aggprover)
+  - [AggSender](#aggsender)
+  - [AggOracle](#aggoracle)
+- [How It Works](#how-it-works)
+  - [Step 1 zkVM: Initial State Transition Validation](#step-1-zkvm-initial-state-transition-validation)
+  - [Step 2: AggProver Aggchain Proof](#step-2-aggprover-aggchain-proof)
+  - [Step 3: Agglayer Pessimistic Proof](#step-3-agglayer-pessimistic-proof)
+
 ## Background
 
 ### Problem Statement
@@ -36,7 +62,7 @@ Proof of Settlement is a fundamental concept in Agglayer that ensures the securi
 
 The combination of these two layers provides a robust security model - both the internal chain operations and the cross-chain transfers must be verified for a transaction to be considered valid. This dual-layer approach ensures that Agglayer can maintain security while supporting different types of chains with varying consensus mechanisms.
 
-![v0.3 flow](./pics/v03Flow.png)
+![v0.3 flow](./pics/v03Flow.png){width=50%}
 *Highlevel overview of the v0.3 trust flow, more details in later sections*
 
 ## Aggchain Proof
