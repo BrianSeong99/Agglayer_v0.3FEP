@@ -6,7 +6,7 @@
   - [What is Agglayer?](#what-is-agglayer)
   - [What is a Unified Bridge?](#what-is-a-unified-bridge)
   - [What is a Pessimistic Proof?](#what-is-a-pessimistic-proof)
-- [Proof of Settlement](#proof-of-settlement)
+- [State Transition Validation](#state-transition-validation)
   - [Aggchain Proof](#aggchain-proof)
     - [Aggchain Proof Data Structure](#aggchain-proof-data-structure)
     - [Execution](#execution)
@@ -53,13 +53,13 @@ For a more detailed understanding of the Pessimistic Proof architecture, impleme
 
 ![How does Pessimistic Proof works](./pics/PessimisticProofFlow.png)
 
-# Proof of Settlement
+# State transition validation
 
-Proof of Settlement is a fundamental concept in Agglayer that ensures the security and validity of cross-chain operations. Think of it as a comprehensive verification system that works in two layers:
+State transition validation is trust validation process of local chain in Agglayer that ensures the security and validity of cross-chain operations. Think of it as a comprehensive verification system that works in two layers:
 
-1. **Internal Settlement Verification(Validity Proof)**: This layer verifies that each chain's internal state transitions are valid. It's like checking that all transactions within a chain are properly executed and the chain's state is consistent. This is done via Validity Proof: A detailed verification of every operation in the chain, and other verification type can be added in the future.
+1. **Internal State transition Verification(Validity Proof)**: This layer verifies that each chain's internal state transitions are valid. It's like checking that all transactions within a chain are properly executed and the chain's state is consistent. This is done via Validity Proof: A detailed verification of every operation in the chain, and other verification type can be added in the future.
 
-2. **Cross-Chain Settlement Verification(Aggchain Proof & Pessimistic Proof)**: This layer verifies that cross-chain operations (like asset transfers between chains) are valid. It ensures that when assets move between chains, the operations are atomic and secure.
+2. **Cross-Chain Verification(Aggchain Proof & Pessimistic Proof)**: This layer verifies that cross-chain operations (like asset transfers between chains) are valid. It ensures that when assets move between chains, the operations are atomic and secure.
 
 The combination of these two layers provides a robust security model - both the internal chain operations and the cross-chain transfers must be verified for a transaction to be considered valid. This dual-layer approach ensures that Agglayer can maintain security while supporting different types of chains with varying consensus mechanisms.
 
