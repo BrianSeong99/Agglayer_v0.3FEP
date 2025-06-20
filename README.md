@@ -1,4 +1,4 @@
-# Agglayer v0.3.0 Documentation
+# Agglayer State Transition Proof (Agglayer v0.3.0) Documentation
 
 ## Table of Contents
 - [Background](#background)
