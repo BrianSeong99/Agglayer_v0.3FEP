@@ -6,7 +6,7 @@
   - [What is Agglayer?](#what-is-agglayer)
   - [What is a Unified Bridge?](#what-is-a-unified-bridge)
   - [What is a Pessimistic Proof?](#what-is-a-pessimistic-proof)
-- [State Transition Validation](#state-transition-validation)
+- [State Transition Proof](#state-transition-proof)
   - [Aggchain Proof](#aggchain-proof)
     - [Aggchain Proof Data Structure](#aggchain-proof-data-structure)
     - [Execution](#execution)
@@ -22,7 +22,7 @@
   - [AggSender](#aggsender)
   - [AggOracle](#aggoracle)
 - [How It Works](#how-it-works)
-  - [Step 1 zkVM: Initial State Transition Validation](#step-1-zkvm-initial-state-transition-validation)
+  - [Step 1 zkVM: Validity Proof](#step-1-zkvm-validity-proof)
   - [Step 2: AggProver Aggchain Proof](#step-2-aggprover-aggchain-proof)
   - [Step 3: Agglayer Pessimistic Proof](#step-3-agglayer-pessimistic-proof)
 - [Changes from v0.2 to v0.3](#changes-from-v0.2-to-v0.3)
@@ -47,17 +47,17 @@ For a more detailed understanding of the Unified Bridge architecture, implementa
 ![Unified Bridge Data Structure](./pics/UnifiedBridgeTree.png)
 
 ### What is a Pessimistic Proof?
-The Pessimistic Proof is a critical security mechanism in Agglayer that verifies state transitions across different networks. It works through a four-step process: First, local chains prepare their state data and transition information in a Certificate format, which includes previous and new local exit roots, bridge exits, and imported bridge exits. Second, the Agglayer client populates a MultiBatchHeader using this certificate data. Third, the system runs the Pessimistic Proof program in native Rust to verify the state transition's validity, comparing the computed new state with the expected state in the batch header. Finally, the same program is executed in a zkVM (currently using SP1 Provers Network from Succinct Labs) to generate a zero-knowledge proof of the computation. The system uses several key data structures including PessimisticProofOutput (which contains roots and hashes of the state transition), Certificate (representing a chain's state transition), and various tree structures for tracking balances and nullifiers. This proof system is designed to be flexible and secure, supporting both ECDSA and Generic consensus types, while maintaining compatibility with existing systems.
+The Pessimistic Proof is a critical security mechanism in Agglayer that verifies token balance state transitions across different networks. It works through a four-step process: First, local chains prepare their state data and transition information in a Certificate format, which includes previous and new local exit roots, bridge exits, and imported bridge exits. Second, the Agglayer client populates a MultiBatchHeader using this certificate data. Third, the system runs the Pessimistic Proof program in native Rust to verify the state transition's validity, comparing the computed new state with the expected state in the batch header. Finally, the same program is executed in a zkVM (currently using SP1 Provers Network from Succinct Labs) to generate a zero-knowledge proof of the computation. The system uses several key data structures including PessimisticProofOutput (which contains roots and hashes of the state transition), Certificate (representing a chain's state transition), and various tree structures for tracking balances and nullifiers. This proof system is designed to be flexible and secure, supporting both ECDSA and Generic consensus types, while maintaining compatibility with existing systems.
 
 For a more detailed understanding of the Pessimistic Proof architecture, implementation, and usage, please refer to the [Agglayer Pessimistic Proof Repository](https://github.com/BrianSeong99/Agglayer_PessimisticProof_Benchmark).
 
 ![How does Pessimistic Proof works](./pics/PessimisticProofFlow.png)
 
-# State transition validation
+# State Transition Proof
 
-State transition validation is trust validation process of local chain in Agglayer that ensures the security and validity of cross-chain operations. Think of it as a comprehensive verification system that works in two layers:
+State transition proof is trust validation process of local chain in Agglayer that ensures the security and validity of cross-chain operations. Think of it as a comprehensive verification system that works in two layers:
 
-1. **Internal State transition Verification(Validity Proof)**: This layer verifies that each chain's internal state transitions are valid. It's like checking that all transactions within a chain are properly executed and the chain's state is consistent. This is done via Validity Proof: A detailed verification of every operation in the chain, and other verification type can be added in the future.
+1. **Internal State transition Proof(Validity Proof)**: This layer verifies that each chain's internal state transitions are valid. It's like checking that all transactions within a chain are properly executed and the chain's state is consistent. This is done via Validity Proof: A detailed verification of every operation in the chain, and other verification type can be added in the future.
 
 2. **Cross-Chain Verification(Aggchain Proof & Pessimistic Proof)**: This layer verifies that cross-chain operations (like asset transfers between chains) are valid. It ensures that when assets move between chains, the operations are atomic and secure.
 
@@ -347,7 +347,7 @@ sequenceDiagram
     Agglayer->>Agglayer: Furtuer faciliate bridging
 ```
 
-### Step 1 zkVM: Initial State Transition Validation
+### Step 1 zkVM: validity proof
 This process happens inside a zkVM, which now runs in SP1 zkVM in `CDK-OP-GETH`, but this is meant to be modular and can support any type of prover.
 
 1. **Generate validity proof / ecdsa signature**: Depending on the chain's security setting with Agglayer, it will generate validity proof that proves the correct internal state transition, or a signature made with the trusted sequencer's private key.
